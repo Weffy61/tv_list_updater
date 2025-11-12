@@ -1,0 +1,14 @@
+version: "3.8"
+
+services:
+  tv_redirector:
+    build: .
+    container_name: tv_redirector
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./app:/app
+      - ./data:/data
+    restart: always
+    env_file:
+      - .env
