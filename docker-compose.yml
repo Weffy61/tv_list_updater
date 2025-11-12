@@ -5,10 +5,21 @@ services:
     build: .
     container_name: tv_redirector
     ports:
-      - "8000:8000"
+      - "8000"
     volumes:
       - ./app:/app
       - ./data:/data
     restart: always
     env_file:
       - .env
+  nginx:
+    image: nginx:stable-alpine
+    container_name: tv_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx:/etc/nginx/conf.d
+      - ./certs:/etc/letsencrypt
+    depends_on:
+      - tv_redirector
