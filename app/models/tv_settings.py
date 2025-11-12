@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, String
-from ..core.db import Base
+from core.db import Base
 
 
 class TVSettings(Base):
