@@ -8,7 +8,6 @@ services:
       - "8000:8000"
     volumes:
       - ./app:/app
-      - ./data:/data
     restart: always
     env_file:
       - .env
