@@ -18,27 +18,21 @@
                         <input class="form-check-input" type="radio" name="delivery_type" id="typeRedirect"
                                value="redirect" {% if delivery_type != "cached" %}checked{% endif %}
                                onchange="toggleCachedOptions()">
-                        <label class="form-check-label" for="typeRedirect">
-                            Переадресация (редирект)
-                        </label>
+                        <label class="form-check-label" for="typeRedirect">Переадресация (редирект)</label>
                     </div>
                     <div class="form-check">
                         <input class="form-check-input" type="radio" name="delivery_type" id="typeCached"
                                value="cached" {% if delivery_type == "cached" %}checked{% endif %}
                                onchange="toggleCachedOptions()">
-                        <label class="form-check-label" for="typeCached">
-                            Загрузка на сервер
-                        </label>
+                        <label class="form-check-label" for="typeCached">Загрузка на сервер</label>
                     </div>
                 </div>
-                <div class="mt-2">
-                    <small class="text-muted" id="hintRedirect" {% if delivery_type == "cached" %}style="display:none"{% endif %}>
-                        Пользователь перенаправляется напрямую на указанную ссылку.
-                    </small>
-                    <small class="text-muted" id="hintCached" {% if delivery_type != "cached" %}style="display:none"{% endif %}>
-                        Плейлист скачивается на сервер и раздаётся с него. Ссылка для плееров: <code>/tv</code>
-                    </small>
-                </div>
+                <small class="text-muted" id="hintRedirect" {% if delivery_type == "cached" %}style="display:none"{% endif %}>
+                    Пользователь перенаправляется напрямую на указанную ссылку.
+                </small>
+                <small class="text-muted" id="hintCached" {% if delivery_type != "cached" %}style="display:none"{% endif %}>
+                    Плейлист скачивается на сервер. Ссылка для плееров: <code>/tv</code>
+                </small>
             </div>
 
             <div class="mb-3">
@@ -52,16 +46,39 @@
                     <label for="updateInterval" class="form-label">Интервал обновления (часов)</label>
                     <input type="number" name="update_interval_hours" id="updateInterval" class="form-control"
                            min="1" max="24" value="{{ update_interval_hours }}">
-                    <div class="form-text">От 1 до 24 часов. Плейлист будет автоматически перезагружаться.</div>
+                    <div class="form-text">От 1 до 24 часов.</div>
                 </div>
+
                 {% if last_cached_at %}
                 <p class="text-muted small mb-3">Последнее обновление: <strong>{{ last_cached_at }}</strong></p>
                 {% else %}
                 <p class="text-muted small mb-3">Плейлист ещё не загружен.</p>
                 {% endif %}
+
+                <hr>
+
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="fw-semibold">Плейлист 18+</span>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="xxxToggleBtn"
+                            onclick="toggleXxx()">
+                        {% if xxx_link %}Скрыть{% else %}+ Добавить{% endif %}
+                    </button>
+                </div>
+
+                <div id="xxxSection" {% if not xxx_link %}style="display:none"{% endif %}
+                     class="p-3 border rounded bg-light">
+                    <label for="xxxLink" class="form-label">Ссылка на плейлист 18+</label>
+                    <input type="text" name="xxx_link" id="xxxLink" class="form-control"
+                           value="{{ xxx_link }}" placeholder="https://...">
+                    <div class="form-text mt-1">
+                        Каналы 18+ добавятся к основному плейлисту и будут доступны по <code>/tv-xxx</code>
+                    </div>
+                    <button type="button" class="btn btn-link btn-sm text-danger p-0 mt-2"
+                            onclick="clearXxx()">Удалить плейлист 18+</button>
+                </div>
             </div>
 
-            <button type="submit" class="btn btn-primary w-100">Сохранить</button>
+            <button type="submit" class="btn btn-primary w-100 mt-3">Сохранить</button>
         </form>
     </div>
 
@@ -72,6 +89,20 @@
             document.getElementById("cachedOptions").style.display = isCached ? "block" : "none";
             document.getElementById("hintRedirect").style.display = isCached ? "none" : "inline";
             document.getElementById("hintCached").style.display = isCached ? "inline" : "none";
+        }
+
+        function toggleXxx() {
+            const section = document.getElementById("xxxSection");
+            const btn = document.getElementById("xxxToggleBtn");
+            const visible = section.style.display !== "none";
+            section.style.display = visible ? "none" : "block";
+            btn.textContent = visible ? "+ Добавить" : "Скрыть";
+        }
+
+        function clearXxx() {
+            document.getElementById("xxxLink").value = "";
+            document.getElementById("xxxSection").style.display = "none";
+            document.getElementById("xxxToggleBtn").textContent = "+ Добавить";
         }
     </script>
 </body>

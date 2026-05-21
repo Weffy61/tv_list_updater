@@ -8,19 +8,22 @@ from core.scheduler import scheduler, schedule_playlist_job
 from core.security import hash_password
 from core.config import settings
 from models.user import User
-from models.tv_settings import TVSettings
+from models.tv_settings import TVSettings, DeliveryType
 from routes import admin, redirect
 
 
 def _run_migrations():
-    if "tv_settings" not in inspect(engine).get_table_names():
+    insp = inspect(engine)
+    if "tv_settings" not in insp.get_table_names():
         return
-    existing = {col["name"] for col in inspect(engine).get_columns("tv_settings")}
+    existing = {col["name"] for col in insp.get_columns("tv_settings")}
     migrations = {
         "delivery_type": "ALTER TABLE tv_settings ADD COLUMN delivery_type VARCHAR DEFAULT 'redirect'",
         "update_interval_hours": "ALTER TABLE tv_settings ADD COLUMN update_interval_hours INTEGER DEFAULT 6",
         "cached_filename": "ALTER TABLE tv_settings ADD COLUMN cached_filename VARCHAR DEFAULT 'playlist.m3u'",
         "last_cached_at": "ALTER TABLE tv_settings ADD COLUMN last_cached_at DATETIME",
+        "xxx_link": "ALTER TABLE tv_settings ADD COLUMN xxx_link VARCHAR",
+        "cached_xxx_filename": "ALTER TABLE tv_settings ADD COLUMN cached_xxx_filename VARCHAR DEFAULT 'playlist-xxx.m3u'",
     }
     with engine.connect() as conn:
         for col, sql in migrations.items():
@@ -42,12 +45,16 @@ async def lifespan(app: FastAPI):
             ))
             db.commit()
 
+        if not db.query(TVSettings).first():
+            db.add(TVSettings(tv_link="", delivery_type=DeliveryType.REDIRECT, update_interval_hours=6))
+            db.commit()
+
     scheduler.start()
 
     with SessionLocal() as db:
         tv = db.query(TVSettings).first()
-        if tv and tv.delivery_type == "cached" and tv.tv_link:
-            schedule_playlist_job(tv.tv_link, tv.update_interval_hours or 6)
+        if tv and tv.delivery_type == DeliveryType.CACHED and tv.tv_link:
+            schedule_playlist_job(tv.update_interval_hours or 6)
 
     yield
 
