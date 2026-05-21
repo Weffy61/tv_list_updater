@@ -15,6 +15,7 @@ services:
   nginx:
     image: nginx:stable-alpine
     container_name: tv_nginx
+    restart: always
     ports:
       - "80:80"
       - "443:443"
