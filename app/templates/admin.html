@@ -4,20 +4,75 @@
     <title>TV Admin</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
 </head>
-<body style="display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #f8f9fa;">
-    <div style="width: 100%; max-width: 500px; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1);">
-        <h2 class="text-center mb-4">Актуальная ссылка</h2>
+<body style="display: flex; justify-content: center; align-items: center; min-height: 100vh; background-color: #f8f9fa;">
+    <div style="width: 100%; max-width: 520px; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); margin: 20px;">
+        <h2 class="text-center mb-4">Управление плейлистом</h2>
         {% if message %}<p style="color: green; text-align: center;">{{ message }}</p>{% endif %}
         {% if error %}<p style="color: red; text-align: center;">{{ error }}</p>{% endif %}
+
         <form method="post" action="/admin/update">
             <div class="mb-3">
-                <label for="tvLink" class="form-label">Ссылка на трансляцию</label>
-                <input type="text" name="tv_link" id="tvLink" class="form-control" value="{{ current_link }}" placeholder="Введите новую ссылку">
+                <label class="form-label fw-semibold">Способ доставки</label>
+                <div class="d-flex gap-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="delivery_type" id="typeRedirect"
+                               value="redirect" {% if delivery_type != "cached" %}checked{% endif %}
+                               onchange="toggleCachedOptions()">
+                        <label class="form-check-label" for="typeRedirect">
+                            Переадресация (редирект)
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="delivery_type" id="typeCached"
+                               value="cached" {% if delivery_type == "cached" %}checked{% endif %}
+                               onchange="toggleCachedOptions()">
+                        <label class="form-check-label" for="typeCached">
+                            Загрузка на сервер
+                        </label>
+                    </div>
+                </div>
+                <div class="mt-2">
+                    <small class="text-muted" id="hintRedirect" {% if delivery_type == "cached" %}style="display:none"{% endif %}>
+                        Пользователь перенаправляется напрямую на указанную ссылку.
+                    </small>
+                    <small class="text-muted" id="hintCached" {% if delivery_type != "cached" %}style="display:none"{% endif %}>
+                        Плейлист скачивается на сервер и раздаётся с него. Ссылка для плееров: <code>/tv</code>
+                    </small>
+                </div>
             </div>
-            <button type="submit" class="btn btn-primary w-100">Обновить</button>
+
+            <div class="mb-3">
+                <label for="tvLink" class="form-label">Ссылка на плейлист</label>
+                <input type="text" name="tv_link" id="tvLink" class="form-control"
+                       value="{{ current_link }}" placeholder="https://...">
+            </div>
+
+            <div id="cachedOptions" {% if delivery_type != "cached" %}style="display:none"{% endif %}>
+                <div class="mb-3">
+                    <label for="updateInterval" class="form-label">Интервал обновления (часов)</label>
+                    <input type="number" name="update_interval_hours" id="updateInterval" class="form-control"
+                           min="1" max="24" value="{{ update_interval_hours }}">
+                    <div class="form-text">От 1 до 24 часов. Плейлист будет автоматически перезагружаться.</div>
+                </div>
+                {% if last_cached_at %}
+                <p class="text-muted small mb-3">Последнее обновление: <strong>{{ last_cached_at }}</strong></p>
+                {% else %}
+                <p class="text-muted small mb-3">Плейлист ещё не загружен.</p>
+                {% endif %}
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100">Сохранить</button>
         </form>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
+    <script>
+        function toggleCachedOptions() {
+            const isCached = document.getElementById("typeCached").checked;
+            document.getElementById("cachedOptions").style.display = isCached ? "block" : "none";
+            document.getElementById("hintRedirect").style.display = isCached ? "none" : "inline";
+            document.getElementById("hintCached").style.display = isCached ? "inline" : "none";
+        }
+    </script>
 </body>
 </html>
