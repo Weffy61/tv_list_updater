@@ -1,0 +1,9 @@
+venv/
+.git/
+.env
+__pycache__/
+*.py[cod]
+app/playlists/
+app/tv.db
+.idea/
+.DS_Store
