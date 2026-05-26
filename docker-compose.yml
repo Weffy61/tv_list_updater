@@ -11,6 +11,8 @@ services:
     restart: always
     env_file:
       - .env
+    environment:
+      - DATABASE_URL=sqlite:////app/tv.db
 
   nginx:
     image: nginx:stable-alpine
