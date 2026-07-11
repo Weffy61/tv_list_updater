@@ -19,8 +19,7 @@ def _merge_m3u(main: bytes, extra: bytes) -> bytes:
 
     result = []
     if main_lines and main_lines[0].startswith("#EXTM3U"):
-        result.append(main_lines[0])
-        result.extend(main_lines[1:])
+        result.extend(main_lines)
     else:
         result.append("#EXTM3U")
         result.extend(main_lines)
@@ -40,16 +39,16 @@ async def download_playlist():
 
     PLAYLIST_DIR.mkdir(exist_ok=True)
     try:
-        async with httpx.AsyncClient(follow_redirects=True, timeout=30) as client:
+        headers = {"User-Agent": "VLC/3.0.20 LibVLC/3.0.20"}
+        async with httpx.AsyncClient(follow_redirects=True, timeout=30, headers=headers) as client:
             resp = await client.get(url)
             resp.raise_for_status()
-            main_content = resp.content
-            (PLAYLIST_DIR / MAIN_PLAYLIST).write_bytes(main_content)
+            (PLAYLIST_DIR / MAIN_PLAYLIST).write_bytes(resp.content)
 
             if xxx_url:
                 xxx_resp = await client.get(xxx_url)
                 xxx_resp.raise_for_status()
-                (PLAYLIST_DIR / XXX_PLAYLIST).write_bytes(_merge_m3u(main_content, xxx_resp.content))
+                (PLAYLIST_DIR / XXX_PLAYLIST).write_bytes(_merge_m3u(resp.content, xxx_resp.content))
 
         with SessionLocal() as db:
             db.query(TVSettings).filter(TVSettings.id == tv_id).update(

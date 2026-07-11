@@ -9,7 +9,7 @@ from core.security import hash_password
 from core.config import settings
 from models.user import User
 from models.tv_settings import TVSettings, DeliveryType
-from routes import admin, redirect
+from routes import admin, redirect, proxy
 
 
 def _run_migrations():
@@ -64,3 +64,4 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="TV Redirector", lifespan=lifespan)
 app.include_router(admin.router)
 app.include_router(redirect.router)
+app.include_router(proxy.router)
