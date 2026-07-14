@@ -4,25 +4,28 @@ services:
   tv_redirector:
     build: .
     container_name: tv_redirector
-    ports:
-      - "8000:8000"
-    volumes:
-      - ./app:/app
     restart: always
     env_file:
       - .env
     environment:
       - DATABASE_URL=sqlite:////app/tv.db
 
-  nginx:
-    image: nginx:stable-alpine
-    container_name: tv_nginx
+  caddy:
+    image: caddy:alpine
+    container_name: tv_caddy
     restart: always
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - ./nginx:/etc/nginx/conf.d
-      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    env_file:
+      - .env
     depends_on:
       - tv_redirector
+
+volumes:
+  caddy_data:
+  caddy_config:

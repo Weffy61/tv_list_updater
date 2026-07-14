@@ -1,0 +1,3 @@
+{$ADMIN_PANEL_URL} {
+    reverse_proxy tv_redirector:8000
+}
