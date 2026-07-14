@@ -25,9 +25,12 @@ def _encode_url(url: str) -> str:
     return base64.urlsafe_b64encode(url.encode()).decode().rstrip("=")
 
 
-def _is_playlist(content_type: str, url: str) -> bool:
+def _is_playlist(content_type: str, url: str, body: str = "") -> bool:
     ct = content_type.split(";")[0].strip().lower()
-    return ct in _PLAYLIST_TYPES or any(url.lower().endswith(ext) for ext in (".m3u", ".m3u8"))
+    type_match = ct in _PLAYLIST_TYPES or any(url.lower().endswith(ext) for ext in (".m3u", ".m3u8"))
+    if not type_match:
+        return False
+    return body.lstrip().startswith(("#EXTM3U", "#EXT-X-"))
 
 
 def _rewrite_playlist(content: str, source_url: str, server_base: str) -> str:
@@ -37,7 +40,14 @@ def _rewrite_playlist(content: str, source_url: str, server_base: str) -> str:
     for line in lines:
         stripped = line.strip()
         if stripped and not stripped.startswith("#"):
-            absolute = stripped if stripped.startswith("http") else urljoin(source_url, stripped)
+            if stripped.startswith("http"):
+                absolute = stripped
+            else:
+                try:
+                    absolute = urljoin(source_url, stripped)
+                except ValueError:
+                    result.append(line)
+                    continue
             result.append(f"{server_base}/proxy?url={_encode_url(absolute)}" + ("\n" if line.endswith("\n") else ""))
         else:
             result.append(line)
@@ -51,17 +61,22 @@ async def proxy_stream(url: str, request: Request):
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid URL token")
 
+    if not original_url.startswith(("http://", "https://")):
+        raise HTTPException(status_code=400, detail="Invalid URL")
+
     try:
         async with httpx.AsyncClient(follow_redirects=True, timeout=30, headers=_HEADERS) as client:
             resp = await client.get(original_url)
-    except httpx.RequestError as e:
+    except (httpx.RequestError, httpx.InvalidURL) as e:
         raise HTTPException(status_code=502, detail=f"Upstream error: {e}")
 
     content_type = resp.headers.get("content-type", "")
+    final_url = str(resp.url)
+    body = resp.text
 
-    if _is_playlist(content_type, original_url):
+    if _is_playlist(content_type, original_url, body) or _is_playlist(content_type, final_url, body):
         server_base = str(request.base_url).rstrip("/")
-        rewritten = _rewrite_playlist(resp.text, original_url, server_base)
+        rewritten = _rewrite_playlist(body, final_url, server_base)
         return Response(rewritten, media_type="application/x-mpegurl")
 
     return Response(resp.content, media_type=content_type or "application/octet-stream")
