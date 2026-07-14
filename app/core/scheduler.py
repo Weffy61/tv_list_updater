@@ -8,6 +8,7 @@ from apscheduler.triggers.interval import IntervalTrigger
 from core.db import SessionLocal
 from core.paths import PLAYLIST_DIR, MAIN_PLAYLIST, XXX_PLAYLIST
 from models.tv_settings import TVSettings
+from routes.proxy import clear_cache
 
 scheduler = AsyncIOScheduler()
 _JOB_ID = "playlist_download"
@@ -39,7 +40,7 @@ async def download_playlist():
 
     PLAYLIST_DIR.mkdir(exist_ok=True)
     try:
-        headers = {"User-Agent": "VLC/3.0.20 LibVLC/3.0.20"}
+        headers = {"User-Agent": "Televizo (Linux; Android 11)"}
         async with httpx.AsyncClient(follow_redirects=True, timeout=30, headers=headers) as client:
             resp = await client.get(url)
             resp.raise_for_status()
@@ -49,6 +50,8 @@ async def download_playlist():
                 xxx_resp = await client.get(xxx_url)
                 xxx_resp.raise_for_status()
                 (PLAYLIST_DIR / XXX_PLAYLIST).write_bytes(_merge_m3u(resp.content, xxx_resp.content))
+
+        clear_cache()
 
         with SessionLocal() as db:
             db.query(TVSettings).filter(TVSettings.id == tv_id).update(
