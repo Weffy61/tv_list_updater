@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from jinja2 import Environment, FileSystemLoader
 
 from core.db import get_db
+from core.stats import stats as get_stats
 from models.user import User
 from models.tv_settings import TVSettings, DeliveryType
 from core.security import verify_password
@@ -35,6 +36,7 @@ async def admin_page(request: Request, db: Session = Depends(get_db)):
         update_interval_hours=(tv.update_interval_hours if tv else 6),
         last_cached_at=last_cached,
         xxx_link=(tv.xxx_link or "") if tv else "",
+        stats=get_stats(),
     ))
 
 

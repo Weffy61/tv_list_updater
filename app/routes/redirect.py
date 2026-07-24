@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from core.db import get_db
 from core.paths import PLAYLIST_DIR, MAIN_PLAYLIST, XXX_PLAYLIST
+from core.stats import record_ip
 from models.tv_settings import TVSettings, DeliveryType
 
 router = APIRouter()
@@ -44,6 +45,7 @@ def _serve_cached(filename: str, request: Request = None) -> Response:
 
 @router.get("/tv")
 async def redirect_to_tv(request: Request, db: Session = Depends(get_db)):
+    record_ip(request.client.host)
     tv = db.query(TVSettings).first()
     if not tv or not tv.tv_link:
         raise HTTPException(status_code=404, detail="TV link not set")
@@ -56,6 +58,7 @@ async def redirect_to_tv(request: Request, db: Session = Depends(get_db)):
 
 @router.get("/tv-xxx")
 async def redirect_to_tv_xxx(request: Request, db: Session = Depends(get_db)):
+    record_ip(request.client.host)
     tv = db.query(TVSettings).first()
     if not tv or not tv.tv_link:
         raise HTTPException(status_code=404, detail="TV link not set")
