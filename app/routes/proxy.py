@@ -2,11 +2,12 @@ import base64
 import time
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
 from core.db import get_db
+from core.stats import record_ip, real_ip
 from models.tv_settings import TVSettings
 
 router = APIRouter()
@@ -29,7 +30,8 @@ def clear_cache() -> None:
 
 
 @router.get("/proxy")
-async def proxy_stream(url: str, db: Session = Depends(get_db)):
+async def proxy_stream(url: str, request: Request, db: Session = Depends(get_db)):
+    record_ip(real_ip(request))
     try:
         original_url = decode_url(url)
     except Exception:

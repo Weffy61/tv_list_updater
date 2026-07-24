@@ -1,10 +1,19 @@
 import time
 
+from fastapi import Request
+
 _DAY = 86400
 _WEEK = 7 * _DAY
 _MONTH = 30 * _DAY
 
 _visits: list[tuple[str, float]] = []  # (ip, timestamp)
+
+
+def real_ip(request: Request) -> str:
+    forwarded = request.headers.get("x-forwarded-for", "")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host
 
 
 def record_ip(ip: str) -> None:
