@@ -7,7 +7,7 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
 from core.db import get_db
-from core.stats import record_ip, real_ip
+from core.stats import record_channel, record_ip, real_ip
 from models.tv_settings import TVSettings
 
 router = APIRouter()
@@ -31,7 +31,8 @@ def clear_cache() -> None:
 
 @router.get("/proxy")
 async def proxy_stream(url: str, request: Request, db: Session = Depends(get_db)):
-    record_ip(real_ip(request))
+    ip = real_ip(request)
+    record_ip(ip)
     try:
         original_url = decode_url(url)
     except Exception:
@@ -40,6 +41,7 @@ async def proxy_stream(url: str, request: Request, db: Session = Depends(get_db)
     if not original_url.startswith(("http://", "https://")):
         raise HTTPException(status_code=400, detail="Invalid URL")
 
+    record_channel(original_url, ip)
     cached = _cache.get(original_url)
     if cached and time.monotonic() < cached[1]:
         return RedirectResponse(url=cached[0], status_code=302)

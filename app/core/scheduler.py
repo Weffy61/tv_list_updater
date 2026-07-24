@@ -7,11 +7,29 @@ from apscheduler.triggers.interval import IntervalTrigger
 
 from core.db import SessionLocal
 from core.paths import PLAYLIST_DIR, MAIN_PLAYLIST, XXX_PLAYLIST
+from core.stats import set_url_channel_map
 from models.tv_settings import TVSettings
 from routes.proxy import clear_cache
 
 scheduler = AsyncIOScheduler()
 _JOB_ID = "playlist_download"
+
+
+def _build_channel_map(content: bytes) -> dict[str, str]:
+    mapping: dict[str, str] = {}
+    lines = content.decode("utf-8", errors="replace").splitlines()
+    pending_name: str | None = None
+    for line in lines:
+        line = line.strip()
+        if line.startswith("#EXTINF") and "," in line:
+            pending_name = line.split(",", 1)[1].strip()
+        elif line and not line.startswith("#") and pending_name is not None:
+            if "kizug.ru" in line:
+                mapping[line] = pending_name
+            pending_name = None
+        elif not line:
+            pending_name = None
+    return mapping
 
 
 def _merge_m3u(main: bytes, extra: bytes) -> bytes:
@@ -45,6 +63,7 @@ async def download_playlist():
             resp = await client.get(url)
             resp.raise_for_status()
             (PLAYLIST_DIR / MAIN_PLAYLIST).write_bytes(resp.content)
+            set_url_channel_map(_build_channel_map(resp.content))
 
             if xxx_url:
                 xxx_resp = await client.get(xxx_url)

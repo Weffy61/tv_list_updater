@@ -4,122 +4,218 @@
     <title>TV Admin</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
 </head>
-<body style="display: flex; justify-content: center; align-items: center; min-height: 100vh; background-color: #f8f9fa;">
-    <div style="width: 100%; max-width: 520px; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); margin: 20px;">
-        <h2 class="text-center mb-4">Управление плейлистом</h2>
-        {% if message %}<p style="color: green; text-align: center;">{{ message }}</p>{% endif %}
-        {% if error %}<p style="color: red; text-align: center;">{{ error }}</p>{% endif %}
+<body class="bg-light py-4">
+<div class="container" style="max-width: 900px;">
 
-        <form method="post" action="/admin/update">
-            <div class="mb-3">
-                <label class="form-label fw-semibold">Способ доставки</label>
-                <div class="d-flex gap-3">
-                    <div class="form-check">
-                        <input class="form-check-input" type="radio" name="delivery_type" id="typeRedirect"
-                               value="redirect" {% if delivery_type != "cached" %}checked{% endif %}
-                               onchange="toggleCachedOptions()">
-                        <label class="form-check-label" for="typeRedirect">Переадресация (редирект)</label>
+    <ul class="nav nav-tabs mb-4" id="mainTabs">
+        <li class="nav-item">
+            <a class="nav-link active" data-bs-toggle="tab" href="#tabPlaylist">Управление плейлистом</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" data-bs-toggle="tab" href="#tabStats">Статистика</a>
+        </li>
+    </ul>
+
+    <div class="tab-content">
+
+        <!-- Вкладка 1: Управление плейлистом -->
+        <div class="tab-pane fade show active" id="tabPlaylist">
+            <div class="bg-white p-4 rounded shadow-sm" style="max-width: 520px; margin: 0 auto;">
+                <h2 class="text-center mb-4">Управление плейлистом</h2>
+                {% if message %}<p style="color: green; text-align: center;">{{ message }}</p>{% endif %}
+                {% if error %}<p style="color: red; text-align: center;">{{ error }}</p>{% endif %}
+
+                <form method="post" action="/admin/update">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Способ доставки</label>
+                        <div class="d-flex gap-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="delivery_type" id="typeRedirect"
+                                       value="redirect" {% if delivery_type != "cached" %}checked{% endif %}
+                                       onchange="toggleCachedOptions()">
+                                <label class="form-check-label" for="typeRedirect">Переадресация (редирект)</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="delivery_type" id="typeCached"
+                                       value="cached" {% if delivery_type == "cached" %}checked{% endif %}
+                                       onchange="toggleCachedOptions()">
+                                <label class="form-check-label" for="typeCached">Загрузка на сервер</label>
+                            </div>
+                        </div>
+                        <small class="text-muted" id="hintRedirect" {% if delivery_type == "cached" %}style="display:none"{% endif %}>
+                            Пользователь перенаправляется напрямую на указанную ссылку.
+                        </small>
+                        <small class="text-muted" id="hintCached" {% if delivery_type != "cached" %}style="display:none"{% endif %}>
+                            Плейлист скачивается на сервер. Ссылка для плееров: <code>/tv</code>
+                        </small>
                     </div>
-                    <div class="form-check">
-                        <input class="form-check-input" type="radio" name="delivery_type" id="typeCached"
-                               value="cached" {% if delivery_type == "cached" %}checked{% endif %}
-                               onchange="toggleCachedOptions()">
-                        <label class="form-check-label" for="typeCached">Загрузка на сервер</label>
+
+                    <div class="mb-3">
+                        <label for="tvLink" class="form-label">Ссылка на плейлист</label>
+                        <input type="text" name="tv_link" id="tvLink" class="form-control"
+                               value="{{ current_link }}" placeholder="https://...">
+                    </div>
+
+                    <div id="cachedOptions" {% if delivery_type != "cached" %}style="display:none"{% endif %}>
+                        <div class="mb-3">
+                            <label for="updateInterval" class="form-label">Интервал обновления (часов)</label>
+                            <input type="number" name="update_interval_hours" id="updateInterval" class="form-control"
+                                   min="1" max="24" value="{{ update_interval_hours }}">
+                            <div class="form-text">От 1 до 24 часов.</div>
+                        </div>
+
+                        {% if last_cached_at %}
+                        <p class="text-muted small mb-3">Последнее обновление: <strong>{{ last_cached_at }}</strong></p>
+                        {% else %}
+                        <p class="text-muted small mb-3">Плейлист ещё не загружен.</p>
+                        {% endif %}
+
+                        <hr>
+
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <span class="fw-semibold">Плейлист 18+</span>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" id="xxxToggleBtn"
+                                    onclick="toggleXxx()">
+                                {% if xxx_link %}Скрыть{% else %}+ Добавить{% endif %}
+                            </button>
+                        </div>
+
+                        <div id="xxxSection" {% if not xxx_link %}style="display:none"{% endif %}
+                             class="p-3 border rounded bg-light">
+                            <label for="xxxLink" class="form-label">Ссылка на плейлист 18+</label>
+                            <input type="text" name="xxx_link" id="xxxLink" class="form-control"
+                                   value="{{ xxx_link }}" placeholder="https://...">
+                            <div class="form-text mt-1">
+                                Каналы 18+ добавятся к основному плейлисту и будут доступны по <code>/tv-xxx</code>
+                            </div>
+                            <button type="button" class="btn btn-link btn-sm text-danger p-0 mt-2"
+                                    onclick="clearXxx()">Удалить плейлист 18+</button>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 mt-3">Сохранить</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Вкладка 2: Статистика -->
+        <div class="tab-pane fade" id="tabStats">
+
+            <!-- Уникальные пользователи -->
+            <div class="bg-white p-4 rounded shadow-sm mb-4">
+                <h6 class="text-muted mb-3">Уникальных пользователей</h6>
+                <div class="row text-center g-3">
+                    <div class="col">
+                        <div class="fs-3 fw-bold">{{ stats.day }}</div>
+                        <div class="text-muted small">За день</div>
+                    </div>
+                    <div class="col">
+                        <div class="fs-3 fw-bold">{{ stats.week }}</div>
+                        <div class="text-muted small">За неделю</div>
+                    </div>
+                    <div class="col">
+                        <div class="fs-3 fw-bold">{{ stats.month }}</div>
+                        <div class="text-muted small">За месяц</div>
                     </div>
                 </div>
-                <small class="text-muted" id="hintRedirect" {% if delivery_type == "cached" %}style="display:none"{% endif %}>
-                    Пользователь перенаправляется напрямую на указанную ссылку.
-                </small>
-                <small class="text-muted" id="hintCached" {% if delivery_type != "cached" %}style="display:none"{% endif %}>
-                    Плейлист скачивается на сервер. Ссылка для плееров: <code>/tv</code>
-                </small>
             </div>
 
-            <div class="mb-3">
-                <label for="tvLink" class="form-label">Ссылка на плейлист</label>
-                <input type="text" name="tv_link" id="tvLink" class="form-control"
-                       value="{{ current_link }}" placeholder="https://...">
-            </div>
+            <!-- Подвкладки -->
+            <ul class="nav nav-tabs mb-3">
+                <li class="nav-item">
+                    <a class="nav-link active" data-bs-toggle="tab" href="#tabChannels">Топ каналов</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="tab" href="#tabIps">Топ IP</a>
+                </li>
+            </ul>
 
-            <div id="cachedOptions" {% if delivery_type != "cached" %}style="display:none"{% endif %}>
-                <div class="mb-3">
-                    <label for="updateInterval" class="form-label">Интервал обновления (часов)</label>
-                    <input type="number" name="update_interval_hours" id="updateInterval" class="form-control"
-                           min="1" max="24" value="{{ update_interval_hours }}">
-                    <div class="form-text">От 1 до 24 часов.</div>
-                </div>
-
-                {% if last_cached_at %}
-                <p class="text-muted small mb-3">Последнее обновление: <strong>{{ last_cached_at }}</strong></p>
-                {% else %}
-                <p class="text-muted small mb-3">Плейлист ещё не загружен.</p>
-                {% endif %}
-
-                <hr>
-
-                <div class="d-flex align-items-center justify-content-between mb-2">
-                    <span class="fw-semibold">Плейлист 18+</span>
-                    <button type="button" class="btn btn-outline-secondary btn-sm" id="xxxToggleBtn"
-                            onclick="toggleXxx()">
-                        {% if xxx_link %}Скрыть{% else %}+ Добавить{% endif %}
-                    </button>
-                </div>
-
-                <div id="xxxSection" {% if not xxx_link %}style="display:none"{% endif %}
-                     class="p-3 border rounded bg-light">
-                    <label for="xxxLink" class="form-label">Ссылка на плейлист 18+</label>
-                    <input type="text" name="xxx_link" id="xxxLink" class="form-control"
-                           value="{{ xxx_link }}" placeholder="https://...">
-                    <div class="form-text mt-1">
-                        Каналы 18+ добавятся к основному плейлисту и будут доступны по <code>/tv-xxx</code>
+            <div class="tab-content">
+                <!-- Топ каналов -->
+                <div class="tab-pane fade show active" id="tabChannels">
+                    <div class="bg-white rounded shadow-sm">
+                        {% if top_channels %}
+                        <table class="table table-hover table-sm mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 40px;">#</th>
+                                    <th>Канал</th>
+                                    <th class="text-end" style="width: 120px;">Открытий</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for name, count in top_channels %}
+                                <tr>
+                                    <td class="text-muted">{{ loop.index }}</td>
+                                    <td>{{ name }}</td>
+                                    <td class="text-end fw-bold">{{ count }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        {% else %}
+                        <p class="text-muted text-center py-4 mb-0">Данных пока нет</p>
+                        {% endif %}
                     </div>
-                    <button type="button" class="btn btn-link btn-sm text-danger p-0 mt-2"
-                            onclick="clearXxx()">Удалить плейлист 18+</button>
+                </div>
+
+                <!-- Топ IP -->
+                <div class="tab-pane fade" id="tabIps">
+                    <div class="bg-white rounded shadow-sm">
+                        {% if top_ips %}
+                        <table class="table table-hover table-sm mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 40px;">#</th>
+                                    <th>IP</th>
+                                    <th>Страна</th>
+                                    <th class="text-end" style="width: 120px;">Запросов</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in top_ips %}
+                                <tr>
+                                    <td class="text-muted">{{ loop.index }}</td>
+                                    <td><code>{{ row.ip }}</code></td>
+                                    <td>{{ row.country }}</td>
+                                    <td class="text-end fw-bold">{{ row.count }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        {% else %}
+                        <p class="text-muted text-center py-4 mb-0">Данных пока нет</p>
+                        {% endif %}
+                    </div>
                 </div>
             </div>
 
-            <button type="submit" class="btn btn-primary w-100 mt-3">Сохранить</button>
-        </form>
+        </div>
     </div>
+</div>
 
-    <div style="position: fixed; bottom: 20px; right: 20px; background: white; padding: 16px 22px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); min-width: 180px;">
-        <div class="fw-semibold mb-2" style="font-size: 0.85rem; color: #6c757d;">Уникальных пользователей</div>
-        <div class="d-flex justify-content-between align-items-center mb-1">
-            <span style="font-size: 0.85rem;">За день</span>
-            <span class="fw-bold">{{ stats.day }}</span>
-        </div>
-        <div class="d-flex justify-content-between align-items-center mb-1">
-            <span style="font-size: 0.85rem;">За неделю</span>
-            <span class="fw-bold">{{ stats.week }}</span>
-        </div>
-        <div class="d-flex justify-content-between align-items-center">
-            <span style="font-size: 0.85rem;">За месяц</span>
-            <span class="fw-bold">{{ stats.month }}</span>
-        </div>
-    </div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
+<script>
+    function toggleCachedOptions() {
+        const isCached = document.getElementById("typeCached").checked;
+        document.getElementById("cachedOptions").style.display = isCached ? "block" : "none";
+        document.getElementById("hintRedirect").style.display = isCached ? "none" : "inline";
+        document.getElementById("hintCached").style.display = isCached ? "inline" : "none";
+    }
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
-    <script>
-        function toggleCachedOptions() {
-            const isCached = document.getElementById("typeCached").checked;
-            document.getElementById("cachedOptions").style.display = isCached ? "block" : "none";
-            document.getElementById("hintRedirect").style.display = isCached ? "none" : "inline";
-            document.getElementById("hintCached").style.display = isCached ? "inline" : "none";
-        }
+    function toggleXxx() {
+        const section = document.getElementById("xxxSection");
+        const btn = document.getElementById("xxxToggleBtn");
+        const visible = section.style.display !== "none";
+        section.style.display = visible ? "none" : "block";
+        btn.textContent = visible ? "+ Добавить" : "Скрыть";
+    }
 
-        function toggleXxx() {
-            const section = document.getElementById("xxxSection");
-            const btn = document.getElementById("xxxToggleBtn");
-            const visible = section.style.display !== "none";
-            section.style.display = visible ? "none" : "block";
-            btn.textContent = visible ? "+ Добавить" : "Скрыть";
-        }
-
-        function clearXxx() {
-            document.getElementById("xxxLink").value = "";
-            document.getElementById("xxxSection").style.display = "none";
-            document.getElementById("xxxToggleBtn").textContent = "+ Добавить";
-        }
-    </script>
+    function clearXxx() {
+        document.getElementById("xxxLink").value = "";
+        document.getElementById("xxxSection").style.display = "none";
+        document.getElementById("xxxToggleBtn").textContent = "+ Добавить";
+    }
+</script>
 </body>
 </html>
