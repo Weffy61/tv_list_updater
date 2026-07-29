@@ -1,3 +1,7 @@
 {$ADMIN_PANEL_URL} {
+    log {
+        output stderr
+        format console
+    }
     reverse_proxy tv_redirector:8000
 }
