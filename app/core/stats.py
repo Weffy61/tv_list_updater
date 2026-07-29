@@ -16,6 +16,7 @@ _events: list[tuple[str, str, float]] = []
 
 _url_to_channel: dict[str, str] = {}   # kizug_url → channel_name
 _ip_country: dict[str, str] = {}       # ip → country (кэш)
+_ip_ua: dict[str, set[str]] = {}       # ip → все уникальные User-Agent'ы
 
 
 def real_ip(request: Request) -> str:
@@ -23,6 +24,11 @@ def real_ip(request: Request) -> str:
     if forwarded:
         return forwarded.split(",")[0].strip()
     return request.client.host
+
+
+def record_ua(ip: str, ua: str) -> None:
+    if ua:
+        _ip_ua.setdefault(ip, set()).add(ua)
 
 
 def record_ip(ip: str) -> None:
@@ -47,6 +53,14 @@ def record_channel(original_url: str, ip: str) -> None:
 def set_url_channel_map(mapping: dict[str, str]) -> None:
     _url_to_channel.clear()
     _url_to_channel.update(mapping)
+
+
+def find_channel_url(name: str) -> str | None:
+    name_lower = name.lower()
+    for url, ch_name in _url_to_channel.items():
+        if ch_name.strip().lower() == name_lower:
+            return url
+    return None
 
 
 def _count_unique(since: float) -> int:
@@ -79,7 +93,7 @@ def top_ips(n: int = 50) -> list[dict]:
     sorted_ips = sorted(ip_counts.items(), key=lambda x: x[1], reverse=True)[:n]
     _fetch_countries([ip for ip, _ in sorted_ips])
     return [
-        {"ip": ip, "count": count, "country": _ip_country.get(ip, "—")}
+        {"ip": ip, "count": count, "country": _ip_country.get(ip, "—"), "uas": sorted(_ip_ua.get(ip, set()))}
         for ip, count in sorted_ips
     ]
 

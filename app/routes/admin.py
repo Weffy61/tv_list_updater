@@ -8,6 +8,7 @@ from jinja2 import Environment, FileSystemLoader
 
 from core.db import get_db
 from core.stats import stats as get_stats, top_channels, top_ips
+from models.blacklisted_ip import BlacklistedIP
 from models.user import User
 from models.tv_settings import TVSettings, DeliveryType
 from core.security import verify_password
@@ -39,6 +40,7 @@ async def admin_page(request: Request, db: Session = Depends(get_db)):
         stats=get_stats(),
         top_channels=top_channels(),
         top_ips=top_ips(),
+        blacklist=db.query(BlacklistedIP).order_by(BlacklistedIP.created_at.desc()).all(),
     ))
 
 
@@ -84,3 +86,23 @@ async def update_link(
         cancel_playlist_job()
 
     return RedirectResponse("/admin", status_code=302)
+
+
+@router.post("/admin/blacklist/add")
+async def blacklist_add(request: Request, ip: str = Form(...), db: Session = Depends(get_db)):
+    if not _is_authenticated(request, db):
+        return RedirectResponse("/admin", status_code=302)
+    ip = ip.strip()
+    if ip and not db.query(BlacklistedIP).filter(BlacklistedIP.ip == ip).first():
+        db.add(BlacklistedIP(ip=ip))
+        db.commit()
+    return RedirectResponse("/admin#tabBlacklist", status_code=302)
+
+
+@router.post("/admin/blacklist/remove")
+async def blacklist_remove(request: Request, ip: str = Form(...), db: Session = Depends(get_db)):
+    if not _is_authenticated(request, db):
+        return RedirectResponse("/admin", status_code=302)
+    db.query(BlacklistedIP).filter(BlacklistedIP.ip == ip.strip()).delete()
+    db.commit()
+    return RedirectResponse("/admin#tabBlacklist", status_code=302)

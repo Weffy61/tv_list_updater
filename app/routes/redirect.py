@@ -6,8 +6,20 @@ from sqlalchemy.orm import Session
 
 from core.db import get_db
 from core.paths import PLAYLIST_DIR, MAIN_PLAYLIST, XXX_PLAYLIST
-from core.stats import record_ip, real_ip
+from core.stats import find_channel_url, record_ip, record_ua, real_ip
+from models.blacklisted_ip import BlacklistedIP
 from models.tv_settings import TVSettings, DeliveryType
+
+
+def _blocked_playlist(request: Request) -> Response:
+    kizug_url = find_channel_url("ТНТ")
+    if kizug_url:
+        server_base = str(request.base_url).rstrip("/")
+        stream_url = f"{server_base}/proxy?url={_encode_url(kizug_url)}"
+    else:
+        stream_url = ""
+    content = f"#EXTM3U\n#EXTINF:-1,ТНТ\n{stream_url}\n"
+    return Response(content, media_type="application/x-mpegurl")
 
 router = APIRouter()
 
@@ -45,7 +57,13 @@ def _serve_cached(filename: str, request: Request = None) -> Response:
 
 @router.get("/tv")
 async def redirect_to_tv(request: Request, db: Session = Depends(get_db)):
-    record_ip(real_ip(request))
+    ip = real_ip(request)
+    record_ip(ip)
+    record_ua(ip, request.headers.get("user-agent", ""))
+
+    if db.query(BlacklistedIP).filter(BlacklistedIP.ip == ip).first():
+        return _blocked_playlist(request)
+
     tv = db.query(TVSettings).first()
     if not tv or not tv.tv_link:
         raise HTTPException(status_code=404, detail="TV link not set")
@@ -58,7 +76,13 @@ async def redirect_to_tv(request: Request, db: Session = Depends(get_db)):
 
 @router.get("/tv-xxx")
 async def redirect_to_tv_xxx(request: Request, db: Session = Depends(get_db)):
-    record_ip(real_ip(request))
+    ip = real_ip(request)
+    record_ip(ip)
+    record_ua(ip, request.headers.get("user-agent", ""))
+
+    if db.query(BlacklistedIP).filter(BlacklistedIP.ip == ip).first():
+        return _blocked_playlist(request)
+
     tv = db.query(TVSettings).first()
     if not tv or not tv.tv_link:
         raise HTTPException(status_code=404, detail="TV link not set")

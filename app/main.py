@@ -9,6 +9,7 @@ from core.security import hash_password
 from core.config import settings
 from models.user import User
 from models.tv_settings import TVSettings, DeliveryType
+from models.blacklisted_ip import BlacklistedIP  # noqa: F401 — registers table
 from routes import admin, redirect, proxy
 
 

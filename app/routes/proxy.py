@@ -7,7 +7,8 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
 from core.db import get_db
-from core.stats import record_channel, record_ip, real_ip
+from core.stats import record_channel, record_ip, record_ua, real_ip
+from models.blacklisted_ip import BlacklistedIP
 from models.tv_settings import TVSettings
 
 router = APIRouter()
@@ -33,6 +34,11 @@ def clear_cache() -> None:
 async def proxy_stream(url: str, request: Request, db: Session = Depends(get_db)):
     ip = real_ip(request)
     record_ip(ip)
+    record_ua(ip, request.headers.get("user-agent", ""))
+
+    if db.query(BlacklistedIP).filter(BlacklistedIP.ip == ip).first():
+        raise HTTPException(status_code=403, detail="Forbidden")
+
     try:
         original_url = decode_url(url)
     except Exception:
